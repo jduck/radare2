@@ -318,6 +318,16 @@ static int r_debug_native_wait (RDebug *dbg, int pid) {
 						}
 					}
 					break;
+				case PTRACE_EVENT_CLONE:
+					if (dbg->trace_clone) {
+						if (ptrace (PTRACE_GETEVENTMSG, pid, 0, &data) == -1) {
+							r_sys_perror ("ptrace GETEVENTMSG");
+						} else {
+							printf ("PTRACE_EVENT_CLONE new_pid=%d\n", data);
+							// TODO: more handling here?
+						}
+					}
+					break;
 				case PTRACE_EVENT_EXIT:
 					if (ptrace (PTRACE_GETEVENTMSG, pid, 0, &data) == -1) {
 						r_sys_perror ("ptrace GETEVENTMSG");
