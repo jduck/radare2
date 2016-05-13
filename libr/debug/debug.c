@@ -417,7 +417,6 @@ R_API int r_debug_wait(RDebug *dbg) {
 	if (r_debug_is_dead (dbg))
 		return dbg->reason.type = R_DEBUG_REASON_DEAD;
 	if (dbg->h && dbg->h->wait) {
-		dbg->reason.type = R_DEBUG_REASON_UNKNOWN;
 		ret = dbg->h->wait (dbg, dbg->pid);
 		dbg->newstate = 1;
 		if (ret == -1) {
