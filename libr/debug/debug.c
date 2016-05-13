@@ -30,10 +30,12 @@ R_API void r_debug_info_free (RDebugInfo *rdi) {
 static int r_debug_recoil(RDebug *dbg) {
 	int recoil;
 	RRegItem *ri;
-	if (r_debug_is_dead (dbg)) {
+
+	/* read general purpose registers */
+	if (!r_debug_reg_sync (dbg, R_REG_TYPE_GPR, false))
 		return false;
-	}
-	r_debug_reg_sync (dbg, R_REG_TYPE_GPR, false);
+
+	/* get the program counter */
 	ri = r_reg_get (dbg->reg, dbg->reg->name[R_REG_NAME_PC], -1);
 	dbg->reason.bpi = NULL;
 	if (ri) {
