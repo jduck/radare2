@@ -306,7 +306,6 @@ static int r_debug_native_wait (RDebug *dbg, int pid) {
 				case 0:
 					// Normal trap?
 					break;
-
 				case PTRACE_EVENT_FORK:
 					if (dbg->trace_forks) {
 						if (ptrace (PTRACE_GETEVENTMSG, pid, 0, &data) == -1) {
@@ -317,16 +316,18 @@ static int r_debug_native_wait (RDebug *dbg, int pid) {
 							// TODO: more handling here?
 						}
 					}
+					status = R_DEBUG_REASON_NEW_PID;
 					break;
 				case PTRACE_EVENT_CLONE:
 					if (dbg->trace_clone) {
 						if (ptrace (PTRACE_GETEVENTMSG, pid, 0, &data) == -1) {
 							r_sys_perror ("ptrace GETEVENTMSG");
 						} else {
-							printf ("PTRACE_EVENT_CLONE new_pid=%d\n", data);
+							eprintf ("PTRACE_EVENT_CLONE new_pid=%d\n", data);
 							// TODO: more handling here?
 						}
 					}
+					status = R_DEBUG_REASON_NEW_TID;
 					break;
 				case PTRACE_EVENT_EXIT:
 					if (ptrace (PTRACE_GETEVENTMSG, pid, 0, &data) == -1) {
@@ -334,9 +335,11 @@ static int r_debug_native_wait (RDebug *dbg, int pid) {
 					} else {
 						eprintf ("PTRACE_EVENT_EXIT pid=%d, status=%d\n", pid, data);
 					}
+					status = R_DEBUG_REASON_EXIT_PID;
 					break;
 				default:
 					eprintf ("Unknown PTRACE_EVENT encountered: %d\n", pt_evt);
+					status = R_DEBUG_REASON_UNKNOWN;
 					break;
 				}
 			}
