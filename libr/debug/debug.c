@@ -792,10 +792,8 @@ repeat:
 #endif
 		/* before continuing, we may need to handle the stage-2 of breakpoints.
 		 */
-		if (dbg->reason.bp_addr && dbg->reason.type == R_DEBUG_REASON_BREAKPOINT) {
-			if (!r_debug_recoil(dbg))
-				return false;
-		}
+		if (!r_debug_recoil(dbg))
+			return false;
 
 		/* tell the inferior to go! */
 		ret = dbg->h->cont (dbg, dbg->pid, dbg->tid, sig);
