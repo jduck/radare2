@@ -48,16 +48,3 @@ R_API bool r_bp_restore_except(RBreakpoint *bp, int set, ut64 addr) {
 	}
 	return rc;
 }
-
-R_API int r_bp_recoil(RBreakpoint *bp, ut64 addr) {
-	RBreakpointItem *b = r_bp_get_in (bp, addr, 0); //XXX Don't care about rwx
-	if (b) {
-		//eprintf("HIT AT ADDR 0x%"PFMT64x"\n", addr);
-		//eprintf("  recoil = %d\n", b->recoil);
-		//eprintf("  size = %d\n", b->size);
-		if (!b->hw && b->addr == addr) {
-			return b->recoil;
-		}
-	}
-	return 0;
-}

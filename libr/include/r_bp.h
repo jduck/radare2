@@ -135,7 +135,6 @@ R_API RBreakpointItem *r_bp_add_hw(RBreakpoint *bp, ut64 addr, int size, int rwx
 R_API void r_bp_restore_one(RBreakpoint *bp, RBreakpointItem *b, int set);
 R_API int r_bp_restore(RBreakpoint *bp, int set);
 R_API bool r_bp_restore_except(RBreakpoint *bp, int set, ut64 addr);
-R_API int r_bp_recoil(RBreakpoint *bp, ut64 addr);
 
 /* traptrace */
 R_API void r_bp_traptrace_free(void *ptr);
