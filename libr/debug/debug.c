@@ -28,15 +28,13 @@ R_API void r_debug_info_free (RDebugInfo *rdi) {
 
 
 /*
- * Recoiling after a breakpoint is hit has two stages:
+ * Recoiling after a breakpoint has two stages:
  * 1. remove the breakpoint and fix the program counter.
  * 2. on resume, single step once and then replace the breakpoint.
  *
  * Thus, we have two functions to handle these situations.
  * r_debug_bp_hit handles stage 1.
  * r_debug_recoil handles stage 2.
- *
- * This should only be called if we think we hit a breakpoint.
  */
 static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 	RBreakpointItem *b;
@@ -51,9 +49,11 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 	if (dbg->trace->enabled)
 		r_debug_trace_pc (dbg, pc);
 
-	/* remove all sw breakpoints for now. we'll set them back in stage 2 */
-	/* XXX(jjd): we should only disable the sw breakpoint we hit... */
-	/* NOTE: it's not necessary to remove ALL sw breakpoints... */
+	/* remove all sw breakpoints for now. we'll set them back in stage 2
+	 *
+	 * this is necessary because while stopped we don't want any breakpoints in
+	 * the code messing up our analysis.
+	 */
 	if (!r_bp_restore (dbg->bp, false)) // unset sw breakpoints
 		return false;
 
@@ -121,26 +121,23 @@ static int r_debug_recoil(RDebug *dbg) {
 
 			/* for swtep, when we return it will do the actual continue
 			 * that will then hit the next breakpoint.
-			 *
-			 * rinse and repeat.
 			 */
 			return true;
 		}
 
-		/* step over the place with the breakpoint and let the caller resume */
+		/* set that we are stepping due to recoil */
 		dbg->in_recoil = 1;
 
+		/* step over the place with the breakpoint and let the caller resume */
 		if (r_debug_step (dbg, 1) != 1)
 			return false;
 	}
 
 	/*
-	 * restore breakpoint(s)
-	 *
-	 * NOTE: it's not necessary to restore ALL breakpoints. we could just
-	 * restore the one we hit.
+	 * restore all sw breakpoints. we are about to step/continue so these need
+	 * to be in place.
 	 */
-	if (!r_bp_restore (dbg->bp, true)) // re-set sw breakpoints
+	if (!r_bp_restore (dbg->bp, true))
 		return false;
 
 	return true;
