@@ -110,7 +110,7 @@ typedef struct r_debug_reason_t {
 	RDebugReasonType type;
 	int tid;
 	int signum;
-	RBreakpointItem *bpi;
+	ut64 bp_addr;
 	ut64 timestamp;
 	ut64 addr;
 	ut64 ptr;

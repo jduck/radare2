@@ -63,7 +63,7 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 		return true;
 
 	/* setup our stage 2 */
-	dbg->reason.bpi = b;
+	dbg->reason.bp_addr = b->addr;
 
 	/* set the pc value back */
 	pc -= b->size;
@@ -93,13 +93,31 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 }
 
 static int r_debug_recoil(RDebug *dbg) {
-	if (dbg->reason.bpi) {
+	if (dbg->reason.bp_addr) {
+		ut64 bp_addr = dbg->reason.bp_addr;
+
 		/* ensure we don't get called again from r_debug_step */
-		dbg->reason.bpi = NULL;
+		dbg->reason.bp_addr = 0;
 		dbg->reason.type = R_DEBUG_REASON_STEP;
+
+		/* if we are using software stepping, we need to insert all the
+		 * breakpoints except this one...
+		 */
+		if (dbg->swstep) {
+			if (!r_bp_restore_except (dbg->bp, true, bp_addr))
+				return false;
+
+			/* for swtep, when we return it will do the actual continue
+			 * that will then hit the next breakpoint.
+			 *
+			 * rinse and repeat.
+			 */
+			return true;
+		}
 
 		/* step over the place with the breakpoint and let the caller resume */
 		dbg->in_recoil = 1;
+
 		if (r_debug_step (dbg, 1) != 1)
 			return false;
 	}
@@ -615,6 +633,16 @@ R_API int r_debug_step_hard(RDebug *dbg) {
 	if (r_debug_is_dead (dbg)) {
 		return false;
 	}
+
+	/* if we are stepping from a breakpoint, re-set breakpoints */
+	if (dbg->reason.bp_addr && dbg->reason.type == R_DEBUG_REASON_BREAKPOINT) {
+		if (!r_debug_recoil (dbg))
+			return false;
+
+		/* recoil already stepped once... */
+		return true;
+	}
+
 	if (!dbg->h->step (dbg)) {
 		return false;
 	}
@@ -649,16 +677,6 @@ R_API int r_debug_step(RDebug *dbg, int steps) {
 
 	if (r_debug_is_dead (dbg))
 		return 0;
-
-	/* if we are stepping from a breakpoint, re-set breakpoints */
-	if (dbg->reason.bpi && dbg->reason.type == R_DEBUG_REASON_BREAKPOINT) {
-		if (!r_debug_recoil (dbg))
-			return 0;
-
-		/* recoil will step once. if that's all we need then we're done. */
-		if (steps == 1)
-			return 1;
-	}
 
 	for (i = 0; i < steps; i++) {
 		if (dbg->swstep)
@@ -774,7 +792,7 @@ repeat:
 #endif
 		/* before continuing, we may need to handle the stage-2 of breakpoints.
 		 */
-		if (dbg->reason.bpi && dbg->reason.type == R_DEBUG_REASON_BREAKPOINT) {
+		if (dbg->reason.bp_addr && dbg->reason.type == R_DEBUG_REASON_BREAKPOINT) {
 			if (!r_debug_recoil(dbg))
 				return false;
 		}
