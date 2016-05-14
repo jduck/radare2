@@ -34,7 +34,7 @@ enum {
 	R_REG_NAME_A5,
 	R_REG_NAME_A6,
 	/* retval */
-	R_REG_NAME_R0, // arguments
+	R_REG_NAME_R0, // return
 	R_REG_NAME_R1,
 	R_REG_NAME_R2,
 	R_REG_NAME_R3,
@@ -69,6 +69,9 @@ enum {
 #define R_REG_COND_LE 12
 #define R_REG_COND_LAST 13
 
+/*
+ * an item in the RRegSet.regs list
+ */
 typedef struct r_reg_item_t {
 	char *name;
 	int type;
@@ -80,17 +83,26 @@ typedef struct r_reg_item_t {
 	int index;
 } RRegItem;
 
+/*
+ * ??
+ */
 typedef struct r_reg_arena_t {
 	ut8 *bytes;
 	int size;
 } RRegArena;
 
+/*
+ * the set of registers within a type (GPSR, FPU, etc)
+ */
 typedef struct r_reg_set_t {
 	RRegArena *arena;
 	RList *pool; /* RRegArena */
 	RList *regs; /* RRegItem */
 } RRegSet;
 
+/*
+ * for a given architecture, this structure tracks all the register supported.
+ */
 typedef struct r_reg_t {
 	char *profile;
 	char *reg_profile_cmt;
@@ -106,6 +118,9 @@ typedef struct r_reg_t {
 	bool big_endian;
 } RReg;
 
+/*
+ * flags for CPU state
+ */
 typedef struct r_reg_flags_t {
 	bool s; // sign, negative number (msb)
 	bool z; // zero
@@ -114,6 +129,7 @@ typedef struct r_reg_flags_t {
 	bool o; // overflow
 	bool p; // parity (lsb)
 } RRegFlags;
+
 
 #ifdef R_API
 R_API void r_reg_free(RReg *reg);

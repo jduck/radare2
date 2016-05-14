@@ -37,6 +37,7 @@ const char *linux_reg_profile (RDebug *dbg) {
 int linux_handle_signals (RDebug *dbg) {
 	siginfo_t siginfo = {0};
 	int ret = ptrace (PTRACE_GETSIGINFO, dbg->pid, 0, &siginfo);
+
 	if (ret != -1 && siginfo.si_signo > 0) {
 		//siginfo_t newsiginfo = {0};
 		//ptrace (PTRACE_SETSIGINFO, dbg->pid, 0, &siginfo);
@@ -67,7 +68,7 @@ int linux_step (RDebug *dbg) {
 	int ret = false;
 	ut64 addr = 0; /* should be eip */
 	//ut32 data = 0;
-	//printf("NATIVE STEP over PID=%d\n", dbg->pid);
+
 	addr = r_debug_reg_get (dbg, "PC");
 	ret = ptrace (PTRACE_SINGLESTEP, dbg->pid,
 			(void*)(size_t)addr, 0);

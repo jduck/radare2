@@ -230,6 +230,8 @@ static int r_debug_native_continue (RDebug *dbg, int pid, int tid, int sig) {
 	return ptrace (PTRACE_CONT, pid, NULL, data) == 0;
 #endif
 }
+
+
 static RDebugInfo* r_debug_native_info (RDebug *dbg, const char *arg) {
 #if __APPLE__
 	return xnu_info (dbg, arg);
@@ -273,13 +275,14 @@ static int r_debug_native_wait (RDebug *dbg, int pid) {
 		RDebugInfo *r = r_debug_native_info (dbg, "");
 		if (r && r->lib) {
 			if (tracelib (dbg, mode=='l'? "load":"unload", r->lib))
-				status=R_DEBUG_REASON_TRAP;
+				status = R_DEBUG_REASON_TRAP;
 		} else {
 			eprintf ("%soading unknown library.\n", mode?"L":"Unl");
 		}
 		r_debug_info_free (r);
 	}
 #else
+	/* who called us with a -1 pid?! */
 	if (pid == -1) {
 		status = R_DEBUG_REASON_UNKNOWN;
 	} else {

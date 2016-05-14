@@ -205,6 +205,13 @@ R_API ut64 r_reg_getv(RReg *reg, const char *name) {
 	return r_reg_get_value (reg, r_reg_get (reg, name, -1));
 }
 
+
+/*
+ * get a register by it's name
+ *
+ * XXX(jjd): traversing a list for this seems wasteful in many cases. we should
+ * index an array to find the correct register by Id (like R_REG_NAME_PC).
+ */
 R_API RRegItem *r_reg_get(RReg *reg, const char *name, int type) {
 	RListIter *iter;
 	RRegItem *r;

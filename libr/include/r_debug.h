@@ -207,7 +207,7 @@ typedef struct r_debug_t {
 
 	RBreakpoint *bp; 		/* breakpoints list */
 
-	void *user; 			/* XXX: unused?? */
+	void *user; 			/* XXX(jjd): unused?? */
 
 	/* io */
 	PrintfCallback cb_printf;

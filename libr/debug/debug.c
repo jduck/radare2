@@ -275,6 +275,7 @@ R_API ut64 r_debug_execute(RDebug *dbg, const ut8 *buf, int len, int restore) {
 	ut8 *backup, *orig = NULL;
 	RRegItem *ri, *risp, *ripc;
 	ut64 rsp, rpc, ra0 = 0LL;
+
 	if (r_debug_is_dead (dbg))
 		return false;
 	ripc = r_reg_get (dbg->reg, dbg->reg->name[R_REG_NAME_PC], R_REG_TYPE_GPR);
@@ -414,6 +415,8 @@ R_API int r_debug_wait(RDebug *dbg) {
 	if (!dbg)
 		return false;
 	dbg->reason.type = R_DEBUG_REASON_UNKNOWN;
+
+	/* did the process die on us? */
 	if (r_debug_is_dead (dbg))
 		return dbg->reason.type = R_DEBUG_REASON_DEAD;
 	if (dbg->h && dbg->h->wait) {
@@ -430,6 +433,7 @@ R_API int r_debug_wait(RDebug *dbg) {
 			/* handle signal on continuations here */
 			int what = r_debug_signal_what (dbg, dbg->reason.signum);
 			const char *name = r_debug_signal_resolve_i (dbg, dbg->reason.signum);
+
 			if (name && strcmp ("SIGTRAP", name))
 				r_cons_printf ("[+] signal %d aka %s received %d\n",
 						dbg->reason.signum, name, what);
@@ -505,6 +509,10 @@ R_API int r_debug_step_soft(RDebug *dbg) {
 	return ret;
 }
 
+
+/*
+ * step by using the underlying plugin's functionality
+ */
 R_API int r_debug_step_hard(RDebug *dbg) {
 	dbg->reason.type = R_DEBUG_REASON_STEP;
 	if (r_debug_is_dead (dbg)) {
@@ -516,6 +524,11 @@ R_API int r_debug_step_hard(RDebug *dbg) {
 	return r_debug_wait (dbg);
 }
 
+/*
+ * step the specified number of instructions
+ *
+ * returns the number of instructions actually stepped.
+ */
 R_API int r_debug_step(RDebug *dbg, int steps) {
 	int i, ret;
 
@@ -611,7 +624,6 @@ R_API int r_debug_step_over(RDebug *dbg, int steps) {
 			r_debug_step (dbg, 1);
 		}
 	}
-
 	return i;
 }
 
@@ -625,9 +637,12 @@ R_API int r_debug_continue_kill(RDebug *dbg, int sig) {
 	r_cons_break (w32_break_process, dbg);
 #endif
 repeat:
+	/* if the inferior died, we can't continue */
 	if (r_debug_is_dead (dbg)) {
 		return false;
 	}
+
+	/* if we have a continue handler in the debugger plugin, use it. */
 	if (dbg->h && dbg->h->cont) {
 		if (dbg->in_recoil) {
 			/* if we are recoiling, we should not set the breakpoint that
@@ -650,6 +665,9 @@ repeat:
 			goto repeat;
 		}
 #endif
+
+		/* if continuing killed the inferior, we won't be able to get
+		 * the registers.. */
 		if (r_debug_is_dead (dbg))
 			return false;
 		r_bp_restore (dbg->bp, false); // unset sw breakpoints
@@ -676,29 +694,35 @@ repeat:
 			}
 		}
 		r_debug_select (dbg, dbg->pid, ret);
+
 		sig = 0; // clear continuation after signal if needed
 		if (retwait == R_DEBUG_REASON_SIGNAL && dbg->reason.signum != -1) {
 			int what = r_debug_signal_what (dbg, dbg->reason.signum);
+
 			if (what & R_DBG_SIGNAL_CONT) {
 				sig = dbg->reason.signum;
 				eprintf ("Continue into the signal %d handler\n", sig);
 				goto repeat;
-			} else if (what & R_DBG_SIGNAL_SKIP) {
+			}
+			else if (what & R_DBG_SIGNAL_SKIP) {
 				// skip signal. requires skipping one instruction
 				ut8 buf[64];
 				RAnalOp op = {0};
 				ut64 pc = r_debug_reg_get (dbg, "PC");
+
 				dbg->iob.read_at (dbg->iob.io, pc, buf, sizeof (buf));
 				r_anal_op (dbg->anal, &op, pc, buf, sizeof (buf));
 				if (op.size > 0) {
-					const char *signame = r_debug_signal_resolve_i (dbg, dbg->reason.signum);
+					const char *signame = r_debug_signal_resolve_i (dbg,
+							dbg->reason.signum);
+
 					r_debug_reg_set (dbg, "PC", pc+op.size);
-					eprintf ("Skip signal %d handler %s\n",
-						dbg->reason.signum, signame);
+					eprintf ("Skip signal %d handler %s\n", dbg->reason.signum,
+							signame);
 					goto repeat;
 				} else {
 					ut64 pc = r_debug_reg_get (dbg, "PC");
-					eprintf ("Stalled with an exception at 0x%08"PFMT64x"\n", pc);
+					eprintf ("Stalled on exception at 0x%08"PFMT64x"\n", pc);
 				}
 			}
 		}
@@ -706,8 +730,12 @@ repeat:
 	return ret;
 }
 
+/*
+ * continue all processes/threads without passing any signals
+ * (this is the default)
+ */
 R_API int r_debug_continue(RDebug *dbg) {
-	return r_debug_continue_kill (dbg, 0); //dbg->reason.signum);
+	return r_debug_continue_kill (dbg, 0);
 }
 
 R_API int r_debug_continue_until_nontraced(RDebug *dbg) {
@@ -925,6 +953,7 @@ R_API int r_debug_child_clone(RDebug *dbg) {
 
 R_API int r_debug_is_dead(RDebug *dbg) {
 	int is_dead = (dbg->pid == -1);
+
 	if (!is_dead && dbg->h && dbg->h->kill) {
 		is_dead = !dbg->h->kill (dbg, dbg->pid, false, 0);
 	}
