@@ -54,7 +54,8 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 	/* remove all sw breakpoints for now. we'll set them back in stage 2 */
 	/* XXX(jjd): we should only disable the sw breakpoint we hit... */
 	/* NOTE: it's not necessary to remove ALL sw breakpoints... */
-	r_bp_restore (dbg->bp, false); // unset sw breakpoints
+	if (!r_bp_restore (dbg->bp, false)) // unset sw breakpoints
+		return false;
 
 	/* see if we really have a breakpoint here... */
 	b = r_bp_get_at (dbg->bp, pc - dbg->bpsize);
