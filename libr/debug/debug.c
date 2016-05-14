@@ -92,6 +92,18 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 	return true;
 }
 
+/*
+ * replace breakpoints before we continue execution
+ *
+ * this is called from r_debug_step_hard or r_debug_continue_kill
+ *
+ * this is a trick process because of breakpoints/tracepoints.
+ *
+ * if a breakpoint was just hit, we need step over that instruction before
+ * allowing the caller to proceed as desired.
+ *
+ * if the user wants to step, the single step here does the job.
+ */
 static int r_debug_recoil(RDebug *dbg) {
 	if (dbg->reason.bp_addr) {
 		ut64 bp_addr = dbg->reason.bp_addr;
