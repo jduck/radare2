@@ -3013,7 +3013,7 @@ static int cmd_debug(void *data, const char *input) {
 			NULL
 		};
 		RDebugInfo *rdi = r_debug_info (core->dbg, input+2);
-		int stop = r_debug_stop_reason(core->dbg);
+		RDebugReasonType stop = r_debug_stop_reason(core->dbg);
 		char *escaped_str;
 		switch (input[1]) {
 		case '\0':
