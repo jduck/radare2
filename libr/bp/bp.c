@@ -33,7 +33,6 @@ R_API RBreakpoint *r_bp_new() {
 			sizeof (RBreakpointPlugin));
 		r_bp_plugin_add (bp, static_plugin);
 	}
-	memset (&bp->iob, 0, sizeof (bp->iob));
 	return bp;
 }
 
@@ -189,7 +188,6 @@ R_API RBreakpointItem* r_bp_add_sw(RBreakpoint *bp, ut64 addr, int size, int rwx
 	if (!(bytes = calloc (1, size))) {
 		return NULL;
 	}
-	memset (bytes, 0, size);
 	if (bp->iob.read_at) {
 		bp->iob.read_at (bp->iob.io, addr, bytes, size);
 	}
