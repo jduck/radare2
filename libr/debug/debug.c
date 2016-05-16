@@ -1059,6 +1059,8 @@ R_API int r_debug_continue_until(RDebug *dbg, ut64 addr) {
 
 	// Continue until the bp is reached
 	for (;;) {
+		RDebugReasonType reason;
+
 		if (r_debug_is_dead (dbg))
 			break;
 		pc = r_debug_reg_get (dbg, dbg->reg->name[R_REG_NAME_PC]);
@@ -1066,7 +1068,10 @@ R_API int r_debug_continue_until(RDebug *dbg, ut64 addr) {
 			break;
 		if (r_bp_get_at (dbg->bp, pc))
 			break;
-		r_debug_continue (dbg);
+		reason = r_debug_continue (dbg);
+		//eprintf ("reason: 0x%x\n", reason);
+		if (reason == R_DEBUG_REASON_SIGNAL)
+			break;
 	}
 	// Clean up if needed
 	if (!has_bp) {
