@@ -39,12 +39,6 @@ R_API void r_debug_info_free (RDebugInfo *rdi) {
 static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 	RBreakpointItem *b;
 
-	/* if we are recoiling, reset the recoil state only */
-	if (dbg->in_recoil) {
-		dbg->in_recoil = false;
-		return true;
-	}
-
 	/* if we are tracing, update the tracing data */
 	if (dbg->trace->enabled)
 		r_debug_trace_pc (dbg, pc);
@@ -56,6 +50,12 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 	 */
 	if (!r_bp_restore (dbg->bp, false)) // unset sw breakpoints
 		return false;
+
+	/* if we are recoiling, tell r_debug_step that we ignored a breakpoint */
+	if (dbg->in_recoil) {
+		dbg->reason.bp_addr = 0;
+		return true;
+	}
 
 	/* see if we really have a breakpoint here... */
 	b = r_bp_get_at (dbg->bp, pc - dbg->bpsize);
@@ -110,38 +110,52 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
  * if the user wants to step, the single step here does the job.
  */
 static int r_debug_recoil(RDebug *dbg) {
+	/* if we have just hit a breakpoint, we have extra work to do. */
 	if (dbg->reason.bp_addr) {
-		ut64 bp_addr = dbg->reason.bp_addr;
-
-		/* ensure we don't get called again from r_debug_step */
-		dbg->reason.bp_addr = 0;
-		dbg->reason.type = R_DEBUG_REASON_STEP;
-
-		/* if we are using software stepping, we need to insert all the
-		 * breakpoints except this one...
-		 */
-		if (dbg->swstep) {
-			if (!r_bp_restore_except (dbg->bp, true, bp_addr))
-				return false;
-
-			/* for swtep, when we return it will do the actual continue
-			 * that will then hit the next breakpoint.
+		/* recursion handling differs between hw and sw stepping... */
+		if (dbg->in_recoil) {
+			/* the first time recoil is called with swstep, we just need to
+			 * look up the bp and step past it.
+			 * the second time it's called, the new sw breakpoint should exist
+			 * so we just restore all except what we originally hit and reset.
 			 */
+			if (dbg->swstep) {
+				if (!r_bp_restore_except (dbg->bp, true, dbg->reason.bp_addr))
+					return false;
+				dbg->in_recoil = false;  /* reset state */
+				return true;
+			}
+		}
+
+		if (dbg->swstep && dbg->reason.type == R_DEBUG_REASON_STEP) {
+			if (!r_bp_restore_except (dbg->bp, true, dbg->reason.bp_addr))
+				return false;
 			return true;
 		}
 
 		/* set that we are stepping due to recoil */
-		dbg->in_recoil = 1;
+		dbg->in_recoil = true;
 
 		/* step over the place with the breakpoint and let the caller resume */
 		if (r_debug_step (dbg, 1) != 1)
 			return false;
+
+		/* we're done with recoil... */
+		dbg->in_recoil = false;
+
+		/* when stepping away from a breakpoint during recoil in stepping mode,
+		 * the r_debug_bp_hit function tells us that it was called
+		 * innapropriately by setting bp_addr back to zero. however, in_recoil
+		 * is still set. we use this condition to know not to proceed but
+		 * pretend as if we had.
+		 */
+		if (!dbg->reason.bp_addr && dbg->recoil_mode == R_DBG_RECOIL_STEP) {
+			return true;
+		}
 	}
 
-	/*
-	 * restore all sw breakpoints. we are about to step/continue so these need
-	 * to be in place.
-	 */
+	/* restore all sw breakpoints. we are about to step/continue so these need
+	 * to be in place. */
 	if (!r_bp_restore (dbg->bp, true))
 		return false;
 
@@ -500,8 +514,9 @@ R_API RDebugReasonType r_debug_stop_reason(RDebug *dbg) {
 R_API RDebugReasonType r_debug_wait(RDebug *dbg) {
 	RDebugReasonType reason = R_DEBUG_REASON_ERROR;
 
-	if (!dbg)
+	if (!dbg) {
 		return reason;
+	}
 
 	/* default to unknown */
 	dbg->reason.type = R_DEBUG_REASON_UNKNOWN;
@@ -651,13 +666,16 @@ R_API int r_debug_step_hard(RDebug *dbg) {
 		return false;
 	}
 
-	/* if we are stepping from a breakpoint, re-set breakpoints */
-	if (dbg->reason.bp_addr && dbg->reason.type == R_DEBUG_REASON_BREAKPOINT) {
+	/* only handle recoils when not already in recoil mode. */
+	if (!dbg->in_recoil) {
 		if (!r_debug_recoil (dbg))
 			return false;
 
-		/* recoil already stepped once... */
-		return true;
+		/* recoil already stepped once, so we don't step again. */
+		if (dbg->recoil_mode == R_DBG_RECOIL_STEP) {
+			dbg->recoil_mode = R_DBG_RECOIL_NONE;
+			return true;
+		}
 	}
 
 	if (!dbg->h->step (dbg)) {
@@ -678,15 +696,6 @@ R_API int r_debug_step_hard(RDebug *dbg) {
 R_API int r_debug_step(RDebug *dbg, int steps) {
 	int i, ret;
 
-	if (!dbg || !dbg->h) {
-		return false;
-	}
-
-	dbg->reason.type = R_DEBUG_REASON_STEP;
-	if (r_debug_is_dead (dbg)) {
-		return -1;
-	}
-
 	/* who calls this without giving a positive number? */
 	if (steps < 1) {
 		steps = 1;
@@ -694,6 +703,11 @@ R_API int r_debug_step(RDebug *dbg, int steps) {
 
 	if (r_debug_is_dead (dbg))
 		return 0;
+
+	/* indicate the user wants to continue after recoil */
+	if (!dbg->in_recoil)
+		dbg->recoil_mode = R_DBG_RECOIL_STEP;
+	dbg->reason.type = R_DEBUG_REASON_STEP;
 
 	for (i = 0; i < steps; i++) {
 		if (dbg->swstep)
@@ -785,6 +799,11 @@ R_API int r_debug_continue_kill(RDebug *dbg, int sig) {
 	if (!dbg) {
 		return false;
 	}
+
+	/* indicate the user wants to continue after recoil */
+	if (!dbg->in_recoil)
+		dbg->recoil_mode = R_DBG_RECOIL_CONTINUE;
+
 #if __WINDOWS__
 	r_cons_break (w32_break_process, dbg);
 #endif
@@ -796,19 +815,7 @@ repeat:
 
 	/* if we have a continue handler in the debugger plugin, use it. */
 	if (dbg->h && dbg->h->cont) {
-#if 0 // from master...
-		if (dbg->in_recoil) {
-			/* if we are recoiling, we should not set the breakpoint that
-			 * caused us to stop.
-			 */
-			dbg->in_recoil = false;
-			r_bp_restore_except (dbg->bp, true, dbg->reason.addr);
-		} else {
-			r_bp_restore (dbg->bp, true); // set sw breakpoints
-		}
-#endif
-		/* before continuing, we may need to handle the stage-2 of breakpoints.
-		 */
+		/* handle the stage-2 of breakpoints */
 		if (!r_debug_recoil(dbg))
 			return false;
 

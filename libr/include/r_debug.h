@@ -68,6 +68,16 @@ typedef enum {
 
 
 /*
+ * when a user wants to resume from a breakpoint, we need to know how they want
+ * to proceed. these values indicate their intention.
+ */
+typedef enum {
+	R_DBG_RECOIL_NONE = 0,
+	R_DBG_RECOIL_STEP,
+	R_DBG_RECOIL_CONTINUE
+} RDebugRecoilMode;
+
+/*
  * List of reasons that an inferior might have stopped
  */
 typedef enum {
@@ -228,8 +238,9 @@ typedef struct r_debug_t {
 
 	/* tracking debugger state */
 	int steps;				/* counter of steps done */
-	bool in_recoil; 		/* are we stopped due to bp? */
 	RDebugReason reason; 	/* stop reason */
+	bool in_recoil; 		/* are we stopped due to bp? */
+	RDebugRecoilMode recoil_mode; 	/* what did the user want to do? */
 
 	/* tracing vars */
 	RDebugTrace *trace;

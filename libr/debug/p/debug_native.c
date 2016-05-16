@@ -349,6 +349,7 @@ static RDebugReasonType r_debug_native_wait (RDebug *dbg, int pid) {
 	/* if we don't know what happened yet, see if it was a signal... */
 	if (reason == R_DEBUG_REASON_UNKNOWN) {
 		if (!r_debug_handle_signals (dbg))
+			/* process might be dead... who knows... */
 			return R_DEBUG_REASON_ERROR;
 		reason = dbg->reason.type;
 	}
