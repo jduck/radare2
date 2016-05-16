@@ -1,0 +1,29 @@
+fix signal handling?
+ - should we pass or not? maybe pass everything except SIGTRAP?
+ - is there a command for continuing without passing the signal?
+ - maybe it would make more sense to have a "set continue signal" command?
+
+more tests for edge cases with breakpoints
+ - breakpoint on two instructions right after one another?
+   - with instruction size > 0
+   - with instruction size > 1
+
+handle PTRACE_EVENT_EXIT events better
+ - there will still be a waitpid event after afaik
+
+implement new pid/tid paradigm
+ - a list of processes that are attached should be cached
+ - for each process, a list of living tids should be cached
+ - when attaching, do a full-stop and attach to all threads
+ - support "stop_all_threads" properly
+ - both of the previous two items need a way to know if all threads are stopped
+ - support continuing single threads only (if it isn't already supported)
+ - support selecting a thread (is it?)
+ - implement commented out APIs for r_debug - add_pid, add_tid, etc.
+
+OPEN QUESTIONS:
+ - are there commands for detaching from processes/threads?
+ - how do breakpoints work in processes/threads? copy-on-write would mean per-thread breakpoints are possible, no?
+ - how do we know what memory is shared and which is not?
+ - how do we get to TLS?
+
