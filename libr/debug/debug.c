@@ -676,7 +676,7 @@ R_API int r_debug_step(RDebug *dbg, int steps) {
 
 	dbg->reason.type = R_DEBUG_REASON_STEP;
 	if (r_debug_is_dead (dbg)) {
-		return false;
+		return -1;
 	}
 
 	/* who calls this without giving a positive number? */

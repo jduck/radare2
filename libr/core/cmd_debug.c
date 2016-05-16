@@ -2251,8 +2251,8 @@ static void debug_trace_calls (RCore *core, const char *input) {
 
 	if (final_addr != UT64_MAX) {
 		int hwbp = r_config_get_i (core->config, "dbg.hwbp");
-		if (hwbp) bp_final = r_bp_add_hw (core->dbg->bp, final_addr, 1, R_BP_PROT_EXEC);
-		else bp_final = r_bp_add_sw (core->dbg->bp, final_addr, 1, R_BP_PROT_EXEC);
+
+		bp_final = r_debug_bp_add (core->dbg, final_addr, hwbp, NULL, 0);
 		if (!bp_final)
 			eprintf ("Cannot set breakpoint at final address (%"PFMT64x")\n", final_addr);
 	}

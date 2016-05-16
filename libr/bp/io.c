@@ -42,30 +42,11 @@ R_API bool r_bp_restore_except(RBreakpoint *bp, int set, ut64 addr) {
 		}
 		if (bp->breakpoint && bp->breakpoint (b, set, bp->user)) {
 			continue;
+		}
 
 		/* write (o|b)bytes from every breakpoint in r_bp if not handled by plugin */
 		r_bp_restore_one (bp, b, set);
+		rc = true;
 	}
 	return rc;
-}
-
-/**
- * reflect all r_bp stuff in the process using dbg->bp_write or ->breakpoint
- *
- * except the specified breakpoint...
- */
-R_API int r_bp_restore_except(RBreakpoint *bp, int set, ut64 addr) {
-	RListIter *iter;
-	RBreakpointItem *b;
-
-	r_list_foreach (bp->bps, iter, b) {
-		if (b->addr == addr)
-			continue;
-		if (bp->breakpoint && bp->breakpoint (b, set, bp->user))
-			continue;
-
-		/* write (o|b)bytes from every breakpoint in r_bp if not handled by plugin */
-		r_bp_restore_one (bp, b, set);
-	}
-	return true;
 }
