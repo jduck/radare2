@@ -626,7 +626,7 @@ R_API RDebugReasonType r_debug_wait(RDebug *dbg) {
 			return R_DEBUG_REASON_ERROR;
 
 		/* if the underlying stop reason is a breakpoint, call the handlers */
-		if (reason == R_DEBUG_REASON_BREAKPOINT) {
+		if (reason == R_DEBUG_REASON_BREAKPOINT || reason == R_DEBUG_REASON_STEP) {
 			RRegItem *pc_ri;
 			ut64 pc;
 
