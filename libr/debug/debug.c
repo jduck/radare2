@@ -62,13 +62,18 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 	if (!b) /* we don't. nothing left to do */
 		return true;
 
-	/* setup our stage 2 */
-	dbg->reason.bp_addr = b->addr;
-
 	/* set the pc value back */
 	pc -= b->size;
 	r_reg_set_value (dbg->reg, pc_ri, pc);
 	r_debug_reg_sync (dbg, R_REG_TYPE_GPR, true);
+
+	/* if we are on a software stepping breakpoint, we hide what is going on... */
+	if (b->swstep) {
+		return true;
+	}
+
+	/* setup our stage 2 */
+	dbg->reason.bp_addr = b->addr;
 
 	/* check if cur bp demands tracing or not */
 	if (b->trace)
@@ -619,7 +624,10 @@ R_API int r_debug_step_soft(RDebug *dbg) {
 	}
 
 	for (i = 0; i < br; i++) {
-		r_bp_add_sw (dbg->bp, next[i], dbg->bpsize, R_BP_PROT_EXEC);
+		RBreakpointItem *bpi = r_bp_add_sw (dbg->bp, next[i], dbg->bpsize, R_BP_PROT_EXEC);
+		if (bpi) {
+			bpi->swstep = true;
+		}
 	}
 
 	ret = r_debug_continue (dbg);
