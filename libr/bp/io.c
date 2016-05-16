@@ -36,7 +36,7 @@ R_API int r_bp_restore(RBreakpoint *bp, int set) {
  * except the specified breakpoint...
  */
 R_API bool r_bp_restore_except(RBreakpoint *bp, int set, ut64 addr) {
-	bool rc = false;
+	bool rc = true;
 	RListIter *iter;
 	RBreakpointItem *b;
 
