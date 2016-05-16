@@ -5,13 +5,17 @@
 
 R_API void r_bp_restore_one(RBreakpoint *bp, RBreakpointItem *b, int set) {
 	if (set) {
-		//eprintf ("Setting bp at 0x%08"PFMT64x"\n", b->addr);
+#ifdef DEBUG_BP_RESTORE
+		eprintf ("Setting bp at 0x%08"PFMT64x"\n", b->addr);
+#endif
 		if (b->hw || !b->bbytes)
 			eprintf ("hw breakpoints not yet supported\n");
 		else
 			bp->iob.write_at (bp->iob.io, b->addr, b->bbytes, b->size);
 	} else {
-		//eprintf ("Clearing bp at 0x%08"PFMT64x"\n", b->addr);
+#ifdef DEBUG_BP_RESTORE
+		eprintf ("Clearing bp at 0x%08"PFMT64x"\n", b->addr);
+#endif
 		if (b->hw || !b->obytes)
 			eprintf ("hw breakpoints not yet supported\n");
 		else

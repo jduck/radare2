@@ -1104,6 +1104,9 @@ R_API int r_debug_is_dead(RDebug *dbg) {
 	if (is_dead) {
 		dbg->reason.type = R_DEBUG_REASON_DEAD;
 	}
+#ifdef DEBUG_PID_DEATH
+	eprintf ("[pid %d is %sdead]\n", dbg->pid, is_dead ? "" : "NOT ");
+#endif
 	return is_dead;
 }
 

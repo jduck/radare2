@@ -2826,6 +2826,10 @@ static int cmd_debug(void *data, const char *input) {
 		return 0;
 	}
 
+#ifdef DEBUG_CMD_DEBUG
+	eprintf ("--- cmd_debug(..., \"d%s\");\n", input);
+#endif
+
 	switch (input[0]) {
 	case 't':
 // TODO: define ranges? to display only some traces, allow to scroll on this disasm? ~.. ?

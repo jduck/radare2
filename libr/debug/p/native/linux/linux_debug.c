@@ -41,6 +41,11 @@ int linux_handle_signals (RDebug *dbg) {
 	int ret = ptrace (PTRACE_GETSIGINFO, dbg->pid, 0, &siginfo);
 
 	if (ret != -1 && siginfo.si_signo > 0) {
+#ifdef DEBUG_GETSIGINFO
+		eprintf ("[i] SIGNAL %d errno=%d addr=%p code=%d ret=%d\n",
+			siginfo.si_signo, siginfo.si_errno,
+			siginfo.si_addr, siginfo.si_code, ret);
+#endif
 		//siginfo_t newsiginfo = {0};
 		//ptrace (PTRACE_SETSIGINFO, dbg->pid, 0, &siginfo);
 		dbg->reason.type = R_DEBUG_REASON_SIGNAL;

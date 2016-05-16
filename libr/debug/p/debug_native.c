@@ -108,6 +108,9 @@ static const char *r_debug_native_reg_profile (RDebug *dbg) {
 #endif
 
 static int r_debug_native_step (RDebug *dbg) {
+#ifdef DEBUG_NATIVE_DEBUG
+	eprintf ("INSIDE NATIVE_STEP\n");
+#endif
 #if __WINDOWS__ && !__CYGWIN__
 	/* set TRAP flag */
 	CONTEXT regs __attribute__ ((aligned (16)));
@@ -189,6 +192,9 @@ static int r_debug_native_detach (RDebug *dbg, int pid) {
 }
 
 static int r_debug_native_continue_syscall (RDebug *dbg, int pid, int num) {
+#ifdef DEBUG_NATIVE_DEBUG
+	eprintf ("INSIDE NATIVE_SYSCALL\n");
+#endif
 // XXX: num is ignored
 #if __linux__
 	return ptrace (PTRACE_SYSCALL, pid, 0, 0);
@@ -204,6 +210,9 @@ static int r_debug_native_continue_syscall (RDebug *dbg, int pid, int num) {
 /* TODO: specify thread? */
 /* TODO: must return true/false */
 static int r_debug_native_continue (RDebug *dbg, int pid, int tid, int sig) {
+#ifdef DEBUG_NATIVE_DEBUG
+	eprintf ("INSIDE NATIVE_CONTINUE\n");
+#endif
 #if __WINDOWS__ && !__CYGWIN__
 	if (ContinueDebugEvent (pid, tid, DBG_CONTINUE) == 0) {
 		print_lasterr ((char *)__FUNCTION__, "ContinueDebugEvent");
@@ -317,7 +326,9 @@ static RDebugReasonType r_debug_native_wait (RDebug *dbg, int pid) {
 		return R_DEBUG_REASON_ERROR;
 	}
 
-	//eprintf ("r_debug_native_wait: status=%d (0x%x) (return=%d)\n", status, status, ret);
+#ifdef DEBUG_NATIVE_DEBUG
+	eprintf ("r_debug_native_wait: status=%d (0x%x) (return=%d)\n", status, status, ret);
+#endif
 
 #ifdef WAIT_ON_ALL_CHILDREN
 	if (ret != pid) {
