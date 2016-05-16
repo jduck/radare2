@@ -7,6 +7,7 @@
 #include <r_anal.h>
 #include <signal.h>
 #include <sys/uio.h>
+#include <errno.h>
 #include "linux_debug.h"
 #include "../procfs.h"
 
@@ -39,6 +40,12 @@ const char *linux_reg_profile (RDebug *dbg) {
 int linux_handle_signals (RDebug *dbg) {
 	siginfo_t siginfo = {0};
 	int ret = ptrace (PTRACE_GETSIGINFO, dbg->pid, 0, &siginfo);
+
+	if (ret == -1 && errno == ESRCH) {
+		//r_sys_perror ("ptrace GETSIGINFO");
+		dbg->reason.type = R_DEBUG_REASON_DEAD;
+		return true;
+	}
 
 	if (ret != -1 && siginfo.si_signo > 0) {
 #ifdef DEBUG_GETSIGINFO
