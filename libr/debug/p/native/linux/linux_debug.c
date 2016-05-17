@@ -41,13 +41,17 @@ int linux_handle_signals (RDebug *dbg) {
 	siginfo_t siginfo = {0};
 	int ret = ptrace (PTRACE_GETSIGINFO, dbg->pid, 0, &siginfo);
 
-	if (ret == -1 && errno == ESRCH) {
-		//r_sys_perror ("ptrace GETSIGINFO");
-		dbg->reason.type = R_DEBUG_REASON_DEAD;
-		return true;
+	if (ret == -1) {
+		/* ESRCH means the process already went away :-/ */
+		if (errno == ESRCH) {
+			dbg->reason.type = R_DEBUG_REASON_DEAD;
+			return true;
+		}
+		r_sys_perror ("ptrace GETSIGINFO");
+		return false;
 	}
 
-	if (ret != -1 && siginfo.si_signo > 0) {
+	if (siginfo.si_signo > 0) {
 #ifdef DEBUG_GETSIGINFO
 		eprintf ("[i] SIGNAL %d errno=%d addr=%p code=%d ret=%d\n",
 			siginfo.si_signo, siginfo.si_errno,

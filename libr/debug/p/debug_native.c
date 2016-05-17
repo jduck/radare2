@@ -332,6 +332,7 @@ static RDebugReasonType r_debug_native_wait (RDebug *dbg, int pid) {
 
 #ifdef WAIT_ON_ALL_CHILDREN
 	if (ret != pid) {
+		reason = R_DEBUG_REASON_NEW_PID;
 		eprintf ("switching to pid %d\n", ret);
 		r_debug_select(dbg, ret, ret);
 	}
@@ -346,27 +347,52 @@ static RDebugReasonType r_debug_native_wait (RDebug *dbg, int pid) {
 	if (reason == R_DEBUG_REASON_ERROR)
 		return reason;
 
-	/* if we don't know what happened yet, see if it was a signal... */
+	/* we don't know what to do yet, let's try harder to figure it out. */
 	if (reason == R_DEBUG_REASON_UNKNOWN) {
-		if (!r_debug_handle_signals (dbg))
-			/* process might be dead... who knows... */
-			return R_DEBUG_REASON_ERROR;
-		reason = dbg->reason.type;
-	}
+		if (WIFEXITED (status)) {
+			eprintf ("child exited with status %d\n", WEXITSTATUS(status));
+			reason = R_DEBUG_REASON_DEAD;
+		} else if (WIFSIGNALED (status)) {
+			eprintf ("child received signal %d\n", WTERMSIG(status));
+			reason = R_DEBUG_REASON_SIGNAL;
+		} else if (WIFSTOPPED (status)) {
+			eprintf ("child stopped with signal %d\n", WSTOPSIG (status));
 
-	/* we don't know what to do yet, let's figure it out. */
-	if (reason == R_DEBUG_REASON_UNKNOWN) {
-		if (WIFSTOPPED (status)) {
+			/* this one might be good enough... */
 			dbg->reason.signum = WSTOPSIG (status);
-			status = R_DEBUG_REASON_SIGNAL;
-		} else if (status == 0 || ret == -1) {
+
+			/* the ptrace documentation says GETSIGINFO is only necessary for
+			 * differentiating the various stops.
+			 *
+			 * this might modify dbg->reason.signum
+			 */
+			if (!r_debug_handle_signals (dbg))
+				return R_DEBUG_REASON_ERROR;
+			reason = R_DEBUG_REASON_SIGNAL;
+		} else if (WIFCONTINUED (status)) {
+			eprintf ("child continued...\n");
+			reason = R_DEBUG_REASON_NONE;
+		} else if (status == 1) {
+			/* XXX(jjd): does this actually happen? */
 			eprintf ("EEK DEAD DEBUGEE!\n");
-			status = R_DEBUG_REASON_DEAD;
+			reason = R_DEBUG_REASON_DEAD;
+		} else if (status == 0) {
+			/* XXX(jjd): does this actually happen? */
+			eprintf ("STATUS=0?!?!?!?\n");
+			reason = R_DEBUG_REASON_DEAD;
 		} else {
 			if (ret != pid)
 				reason = R_DEBUG_REASON_NEW_PID;
-			/* ugh. still don't know :-/ */
+			else
+				/* ugh. still don't know :-/ */
+				eprintf ("CRAP. returning from wait without knowing why...\n");
 		}
+	}
+
+	/* if we still don't know what to do, we have a problem... */
+	if (reason == R_DEBUG_REASON_UNKNOWN) {
+		eprintf ("%s: no idea what happened... wtf?!?!\n", __func__);
+		reason = R_DEBUG_REASON_ERROR;
 	}
 #endif // __APPLE__
 #endif // __WINDOWS__ && !__CYGWIN__
