@@ -21,6 +21,11 @@ implement new pid/tid paradigm
  - support selecting a thread (is it?)
  - implement commented out APIs for r_debug - add_pid, add_tid, etc.
 
+revisit recoil
+ X does adding the recoil_mode simplify the logic any?
+ X can it's existence get rid of "in_recoil" ?
+ - is the recoil_mode properly maintained always?
+
 OPEN QUESTIONS:
  - are there commands for detaching from processes/threads?
  - how do breakpoints work in processes/threads? copy-on-write would mean per-thread breakpoints are possible, no?

@@ -73,10 +73,9 @@ static inline void show_recoil_state(RDebug *dbg, const char *func, const char *
 		sprintf(recoil_mode, "%d??", dbg->recoil_mode);
 	}
 
-	eprintf ("%-24s swstep:%-5s  recoil:%-5s recoil_mode:%-4s reason:%-10s bp_addr:0x%-16" PFMT64x " (%s)\n",
+	eprintf ("--- %-24s swstep:%-5s  recoil_mode:%-4s reason:%-10s bp_addr:0x%-16" PFMT64x " (%s)\n",
 			func,
 			dbg->swstep ? "true" : "false",
-			dbg->in_recoil ? "true" : "false",
 			recoil_mode,
 			reason_type,
 			dbg->reason.bp_addr,
@@ -117,7 +116,7 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 
 	/* if we are recoiling, tell r_debug_step that we ignored a breakpoint
 	 * event */
-	if (dbg->in_recoil) {
+	if (dbg->recoil_mode != R_DBG_RECOIL_NONE) {
 		show_recoil_state (dbg, __func__, "ignoring bphit in recoil");
 		dbg->reason.bp_addr = 0;
 		return true;
@@ -130,8 +129,21 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 
 	/* set the pc value back */
 	pc -= b->size;
-	r_reg_set_value (dbg->reg, pc_ri, pc);
-	r_debug_reg_sync (dbg, R_REG_TYPE_GPR, true);
+	if (!r_reg_set_value (dbg->reg, pc_ri, pc)) {
+		eprintf ("failed to set PC!\n");
+		return false;
+	}
+#if 0
+	/* read it back to be sure */
+	if (r_reg_get_value (dbg->reg, pc_ri) != pc) {
+		eprintf ("failed to set PC!!\n");
+		return false;
+	}
+#endif
+	if (!r_debug_reg_sync (dbg, R_REG_TYPE_GPR, true)) {
+		eprintf ("cannot set registers!\n");
+		return false;
+	}
 
 	/* if we are on a software stepping breakpoint, we hide what is going on... */
 	if (b->swstep) {
@@ -161,6 +173,7 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 		goto repeat;
 	}
 	 */
+	show_recoil_state (dbg, __func__, "default return");
 	return true;
 }
 
@@ -176,69 +189,84 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
  *
  * if the user wants to step, the single step here does the job.
  */
-static int r_debug_recoil(RDebug *dbg) {
+static int r_debug_recoil(RDebug *dbg, RDebugRecoilMode rc_mode) {
 	show_recoil_state (dbg, __func__, "entry");
 
-	/* if we have just hit a breakpoint, we have extra work to do. */
-	if (dbg->reason.bp_addr) {
-		/* recursion handling differs between hw and sw stepping... */
-		if (dbg->in_recoil) {
-			/* the first time recoil is called with swstep, we just need to
-			 * look up the bp and step past it.
-			 * the second time it's called, the new sw breakpoint should exist
-			 * so we just restore all except what we originally hit and reset.
-			 */
-			if (dbg->swstep) {
-				show_recoil_state (dbg, __func__, "BREAKPOINTS MOSTLY #1");
-				if (!r_bp_restore_except (dbg->bp, true, dbg->reason.bp_addr))
-					return false;
-				dbg->in_recoil = false;  /* reset state */
-				return true;
-			}
-		}
+	/* if bp_addr is not set, we must not have actually hit a breakpoint */
+	if (!dbg->reason.bp_addr) {
+		show_recoil_state (dbg, __func__, "no breakpoint to handle");
+		goto enable_breakpoints;
+	}
 
-		if (dbg->swstep && dbg->reason.type == R_DEBUG_REASON_STEP) {
-			show_recoil_state (dbg, __func__, "BREAKPOINTS MOSTLY #2");
+	/* don't do anything if we already are recoiling */
+	if (dbg->recoil_mode != R_DBG_RECOIL_NONE) {
+		/* the first time recoil is called with swstep, we just need to
+		 * look up the bp and step past it.
+		 * the second time it's called, the new sw breakpoint should exist
+		 * so we just restore all except what we originally hit and reset.
+		 */
+		if (dbg->swstep) {
+			show_recoil_state (dbg, __func__, "BREAKPOINTS MOSTLY #1");
 			if (!r_bp_restore_except (dbg->bp, true, dbg->reason.bp_addr))
 				return false;
 			return true;
 		}
-
-		/* set that we are stepping due to recoil */
-		dbg->in_recoil = true;
-
-		/* step over the place with the breakpoint and let the caller resume */
-#ifdef DEBUG_RECOIL_STATE
-		{
-			char buf[128];
-			sprintf (buf, "stepping over 0x%" PFMT64x, dbg->reason.bp_addr);
-			show_recoil_state (dbg, __func__, buf);
-		}
-#endif
-		if (r_debug_step (dbg, 1) != 1)
-			return false;
-
-		/* we're done with recoil... */
-		dbg->in_recoil = false;
-
-		/* when stepping away from a breakpoint during recoil in stepping mode,
-		 * the r_debug_bp_hit function tells us that it was called
-		 * innapropriately by setting bp_addr back to zero. however, in_recoil
-		 * is still set. we use this condition to know not to proceed but
-		 * pretend as if we had.
+		
+		/* otherwise, avoid recursion */
+		show_recoil_state (dbg, __func__, "recursion avoidance");
+		return true;
+	}
+	else if (dbg->swstep && dbg->reason.type == R_DEBUG_REASON_STEP) {
+		/* if stepping with swstep on, recoiling is just a matter of not
+		 * re-setting the breakpoint for the instruction we are stopped on.
+		 *
+		 * we don't even need to step over or set dbg->recoil_mode...
 		 */
-		if (!dbg->reason.bp_addr && dbg->recoil_mode == R_DBG_RECOIL_STEP) {
-			show_recoil_state (dbg, __func__, "recoil finished #2.1");
-			return true;
-		}
+		show_recoil_state (dbg, __func__, "BREAKPOINTS MOSTLY #2");
+		if (!r_bp_restore_except (dbg->bp, true, dbg->reason.bp_addr))
+			return false;
+		return true;
 	}
 
+	/* we have entered recoil! */
+	dbg->recoil_mode = rc_mode;
+
+	/* step over the place with the breakpoint and let the caller resume */
+#ifdef DEBUG_RECOIL_STATE
+	{
+		char buf[128];
+		sprintf (buf, "stepping over 0x%" PFMT64x, dbg->reason.bp_addr);
+		show_recoil_state (dbg, __func__, buf);
+	}
+#endif
+	if (r_debug_step (dbg, 1) != 1)
+		return false;
+
+	/* when stepping away from a breakpoint during recoil in stepping mode,
+	 * the r_debug_bp_hit function tells us that it was called
+	 * innapropriately by setting bp_addr back to zero. however, recoil_mode
+	 * is still set. we use this condition to know not to proceed but
+	 * pretend as if we had.
+	 */
+	if (!dbg->reason.bp_addr && dbg->recoil_mode == R_DBG_RECOIL_STEP) {
+		/* restore all sw breakpoints. we are about to step/continue so these need
+		 * to be in place. */
+		show_recoil_state (dbg, __func__, "BREAKPOINTS ON - 2.1");
+		if (!r_bp_restore (dbg->bp, true))
+			return false;
+		return true;
+	}
+
+enable_breakpoints:
 	/* restore all sw breakpoints. we are about to step/continue so these need
 	 * to be in place. */
 	show_recoil_state (dbg, __func__, "BREAKPOINTS ON");
 	if (!r_bp_restore (dbg->bp, true))
 		return false;
 
+	/* done recoiling... */
+	dbg->recoil_mode = R_DBG_RECOIL_NONE;
+	show_recoil_state (dbg, __func__, "exit");
 	return true;
 }
 
@@ -332,7 +360,6 @@ R_API RDebug *r_debug_new(int hard) {
 	dbg->tree = r_tree_new ();
 	dbg->tracenodes = sdb_new0 ();
 	dbg->swstep = 0;
-	dbg->in_recoil = false;
 	dbg->stop_all_threads = false;
 	dbg->trace = r_debug_trace_new ();
 	dbg->cb_printf = (void *)printf;
@@ -757,14 +784,15 @@ R_API int r_debug_step_hard(RDebug *dbg) {
 
 	show_recoil_state (dbg, __func__, "entry");
 	/* only handle recoils when not already in recoil mode. */
-	if (!dbg->in_recoil) {
-		if (!r_debug_recoil (dbg))
+	if (dbg->recoil_mode == R_DBG_RECOIL_NONE) {
+		/* handle the stage-2 of breakpoints */
+		if (!r_debug_recoil (dbg, R_DBG_RECOIL_STEP))
 			return false;
 
 		/* recoil already stepped once, so we don't step again. */
 		if (dbg->recoil_mode == R_DBG_RECOIL_STEP) {
-			show_recoil_state (dbg, __func__, "recoil finished #3");
 			dbg->recoil_mode = R_DBG_RECOIL_NONE;
+			show_recoil_state (dbg, __func__, "already stepped");
 			return true;
 		}
 	}
@@ -774,6 +802,7 @@ R_API int r_debug_step_hard(RDebug *dbg) {
 		return false;
 	}
 	reason = r_debug_wait (dbg);
+	show_recoil_state (dbg, __func__, "after wait");
 	/* TODO: handle better */
 	if (reason == R_DEBUG_REASON_ERROR)
 		return false;
@@ -796,12 +825,8 @@ R_API int r_debug_step(RDebug *dbg, int steps) {
 	if (r_debug_is_dead (dbg))
 		return 0;
 
-	show_recoil_state (dbg, __func__, "entry1");
-	/* indicate the user wants to continue after recoil */
-	if (!dbg->in_recoil)
-		dbg->recoil_mode = R_DBG_RECOIL_STEP;
+	show_recoil_state (dbg, __func__, "entry");
 	dbg->reason.type = R_DEBUG_REASON_STEP;
-	show_recoil_state (dbg, __func__, "entry2");
 
 	for (i = 0; i < steps; i++) {
 		if (dbg->swstep)
@@ -894,10 +919,6 @@ R_API int r_debug_continue_kill(RDebug *dbg, int sig) {
 		return false;
 	}
 
-	/* indicate the user wants to continue after recoil */
-	if (!dbg->in_recoil)
-		dbg->recoil_mode = R_DBG_RECOIL_CONTINUE;
-
 	show_recoil_state (dbg, __func__, "entry");
 #if __WINDOWS__
 	r_cons_break (w32_break_process, dbg);
@@ -911,7 +932,7 @@ repeat:
 	/* if we have a continue handler in the debugger plugin, use it. */
 	if (dbg->h && dbg->h->cont) {
 		/* handle the stage-2 of breakpoints */
-		if (!r_debug_recoil(dbg))
+		if (!r_debug_recoil (dbg, R_DBG_RECOIL_CONTINUE))
 			return false;
 
 		/* tell the inferior to go! */

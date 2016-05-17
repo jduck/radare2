@@ -239,7 +239,6 @@ typedef struct r_debug_t {
 	/* tracking debugger state */
 	int steps;				/* counter of steps done */
 	RDebugReason reason; 	/* stop reason */
-	bool in_recoil; 		/* are we stopped due to bp? */
 	RDebugRecoilMode recoil_mode; 	/* what did the user want to do? */
 
 	/* tracing vars */
