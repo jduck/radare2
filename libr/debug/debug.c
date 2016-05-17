@@ -1037,7 +1037,9 @@ R_API int r_debug_continue_until_optype(RDebug *dbg, int type, int over) {
 
 	// step first, we dont want to check current optype
 	for (;;) {
-		r_debug_reg_sync (dbg, R_REG_TYPE_GPR, false);
+		if (!r_debug_reg_sync (dbg, R_REG_TYPE_GPR, false))
+			break;
+
 		pc = r_debug_reg_get (dbg, dbg->reg->name[R_REG_NAME_PC]);
 		// Try to keep the buffer full
 		if (pc - buf_pc > sizeof (buf)) {
