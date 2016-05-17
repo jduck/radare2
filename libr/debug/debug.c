@@ -1162,6 +1162,9 @@ R_API int r_debug_continue_syscalls(RDebug *dbg, int *sc, int n_sc) {
 			break;
 #if __linux__
 		// step is needed to avoid dupped contsc results
+		/* XXX(jjd): actually one stop is before the syscall, the other is
+		 * after.  this allows you to inspect the arguments before and the
+		 * return value after... */
 		r_debug_step (dbg, 1);
 #endif
 		dbg->h->contsc (dbg, dbg->pid, 0); // TODO handle return value
