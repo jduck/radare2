@@ -753,7 +753,7 @@ R_API int r_debug_step_soft(RDebug *dbg) {
 #ifdef DEBUG_RECOIL_STATE
 			{
 				char buf[128];
-				sprintf (buf, "swstep bp @ 0x%" PFMT64x "...\n", next[i]);
+				sprintf (buf, "swstep bp @ 0x%" PFMT64x, next[i]);
 				show_recoil_state (dbg, __func__, buf);
 			}
 #endif
