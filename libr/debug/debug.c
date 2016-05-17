@@ -806,6 +806,8 @@ R_API int r_debug_step_hard(RDebug *dbg) {
 	/* TODO: handle better */
 	if (reason == R_DEBUG_REASON_ERROR)
 		return false;
+	if (reason == R_DEBUG_REASON_DEAD || r_debug_is_dead (dbg))
+		return false;
 	return true;
 }
 
@@ -955,7 +957,7 @@ repeat:
 
 		/* if continuing killed the inferior, we won't be able to get
 		 * the registers.. */
-		if (r_debug_is_dead (dbg))
+		if (reason == R_DEBUG_REASON_DEAD || r_debug_is_dead (dbg))
 			return false;
 
 		/* choose the thread that was returned from the continue function */
@@ -1165,6 +1167,8 @@ R_API int r_debug_continue_syscalls(RDebug *dbg, int *sc, int n_sc) {
 		dbg->h->contsc (dbg, dbg->pid, 0); // TODO handle return value
 		// wait until continuation
 		reason = r_debug_wait (dbg);
+		if (reason == R_DEBUG_REASON_DEAD || r_debug_is_dead (dbg))
+			break;
 		if (reason != R_DEBUG_REASON_STEP)
 			break;
 
