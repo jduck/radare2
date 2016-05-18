@@ -82,8 +82,18 @@ static void show_recoil_state(RDebug *dbg, const char *func, const char *msg) {
 			msg);
 	//r_sys_backtrace ();
 }
+static void breakpoint_state(bool state) {
+	static bool breakpoints_enabled = false;
+	if (state == breakpoints_enabled) {
+		//__asm__("int3");
+		eprintf ("WARNING: breakpoints are already %s!\n",
+				breakpoints_enabled ? "enabled" : "disabled");
+	}
+	breakpoints_enabled = state;
+}
 #else
 #define show_recoil_state(d,f,m)
+#define breakpoint_state(x)
 #endif
 
 
@@ -113,6 +123,7 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 	show_recoil_state (dbg, __func__, "BREAKPOINTS OFF");
 	if (!r_bp_restore (dbg->bp, false)) // unset sw breakpoints
 		return false;
+	breakpoint_state(false);
 
 	/* if we are recoiling, tell r_debug_step that we ignored a breakpoint
 	 * event */
@@ -209,6 +220,7 @@ static int r_debug_recoil(RDebug *dbg, RDebugRecoilMode rc_mode) {
 			show_recoil_state (dbg, __func__, "BREAKPOINTS MOSTLY #1");
 			if (!r_bp_restore_except (dbg->bp, true, dbg->reason.bp_addr))
 				return false;
+			breakpoint_state(true);
 			return true;
 		}
 		
@@ -225,6 +237,7 @@ static int r_debug_recoil(RDebug *dbg, RDebugRecoilMode rc_mode) {
 		show_recoil_state (dbg, __func__, "BREAKPOINTS MOSTLY #2");
 		if (!r_bp_restore_except (dbg->bp, true, dbg->reason.bp_addr))
 			return false;
+		breakpoint_state(true);
 		return true;
 	}
 
@@ -255,6 +268,7 @@ static int r_debug_recoil(RDebug *dbg, RDebugRecoilMode rc_mode) {
 		show_recoil_state (dbg, __func__, "BREAKPOINTS ON - 2.1");
 		if (!r_bp_restore (dbg->bp, true))
 			return false;
+		breakpoint_state(true);
 		return true;
 	}
 
@@ -264,6 +278,7 @@ enable_breakpoints:
 	show_recoil_state (dbg, __func__, "BREAKPOINTS ON");
 	if (!r_bp_restore (dbg->bp, true))
 		return false;
+	breakpoint_state(true);
 
 	/* done recoiling... */
 	dbg->recoil_mode = R_DBG_RECOIL_NONE;
