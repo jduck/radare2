@@ -722,6 +722,8 @@ R_API int r_debug_step_soft(RDebug *dbg) {
 	} sp_top;
 
 	show_recoil_state (dbg, __func__, "entry");
+	if (dbg->recoil_mode == R_DBG_RECOIL_NONE)
+		dbg->recoil_mode = R_DBG_RECOIL_STEP;
 
 	if (r_debug_is_dead (dbg)) {
 		return false;
