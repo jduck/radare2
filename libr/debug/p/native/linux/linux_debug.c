@@ -11,8 +11,6 @@
 #include "linux_debug.h"
 #include "../procfs.h"
 
-static bool stepping = false;
-
 const char *linux_reg_profile (RDebug *dbg) {
 #if __arm__
 #include "reg/linux-arm.h"
@@ -66,6 +64,9 @@ int linux_handle_signals (RDebug *dbg) {
 		// siginfo.si_code -> HWBKPT, USER, KERNEL or WHAT
 #warning DO MORE RDEBUGREASON HERE
 		switch (dbg->reason.signum) {
+			case SIGTRAP:
+				dbg->reason.type = R_DEBUG_REASON_BREAKPOINT;
+				break;
 			case SIGABRT: // 6 / SIGIOT // SIGABRT
 				dbg->reason.type = R_DEBUG_REASON_ABORT;
 				break;
@@ -131,12 +132,8 @@ RDebugReasonType linux_ptrace_event (RDebug *dbg, int pid, int status) {
 	pt_evt = status >> 16;
 	switch (pt_evt) {
 	case 0:
-		/* this could be a breakpoint or a SYSCALL/STEP event */
-		if (stepping) {
-			stepping = false;
-			return R_DEBUG_REASON_STEP;
-		}
-		return R_DEBUG_REASON_BREAKPOINT;
+		/* NOTE: this case is handled by linux_handle_signals */
+		break;
 	case PTRACE_EVENT_FORK:
 		if (dbg->trace_forks) {
 			if (ptrace (PTRACE_GETEVENTMSG, pid, 0, &data) == -1) {
@@ -186,8 +183,6 @@ int linux_step (RDebug *dbg) {
 
 	addr = r_debug_reg_get (dbg, "PC");
 	//eprintf ("NATIVE STEP over PID=%d at 0x%" PFMT64x "\n", dbg->pid, addr);
-	/* set the flag so calling wait knows that we start stepping */
-	stepping = true;
 	ret = ptrace (PTRACE_SINGLESTEP, dbg->pid, (void*)(size_t)addr, 0);
 	//XXX(jjd): why?? //linux_handle_signals (dbg);
 	if (ret == -1) {
