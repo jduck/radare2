@@ -654,10 +654,10 @@ R_API RDebugReasonType r_debug_wait(RDebug *dbg) {
 	if (dbg->h && dbg->h->wait) {
 		reason = dbg->h->wait (dbg, dbg->pid);
 
-		// XXX(jjd): TODO: handle fallback or something else
-		if (reason == R_DEBUG_REASON_EXIT_PID || reason == R_DEBUG_REASON_DEAD) {
+		if (reason == R_DEBUG_REASON_DEAD) {
 			eprintf ("\n==> Process finished\n\n");
-			r_debug_select (dbg, -1, -1);
+			// XXX(jjd): TODO: handle fallback or something else
+			//r_debug_select (dbg, -1, -1);
 			return R_DEBUG_REASON_DEAD;
 		}
 
