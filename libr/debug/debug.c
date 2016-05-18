@@ -58,7 +58,7 @@ const char *recoil_modes[] = {
 	"STEP",
 	"CONT"
 };
-static inline void show_recoil_state(RDebug *dbg, const char *func, const char *msg) {
+static void show_recoil_state(RDebug *dbg, const char *func, const char *msg) {
 	char reason_type[32], recoil_mode[32];
 
 	if (dbg->reason.type >= 0 && dbg->reason.type < sizeof(dbg_reasons)) {
@@ -248,6 +248,7 @@ static int r_debug_recoil(RDebug *dbg, RDebugRecoilMode rc_mode) {
 	 * is still set. we use this condition to know not to proceed but
 	 * pretend as if we had.
 	 */
+	show_recoil_state (dbg, __func__, "STEPPING AWAY");
 	if (!dbg->reason.bp_addr && dbg->recoil_mode == R_DBG_RECOIL_STEP) {
 		/* restore all sw breakpoints. we are about to step/continue so these need
 		 * to be in place. */
