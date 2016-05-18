@@ -76,9 +76,6 @@ int linux_handle_signals (RDebug *dbg) {
 			default:
 				break;
 		}
-		eprintf ("[+] SIGNAL %d errno=%d addr=%p code=%d ret=%d\n",
-			siginfo.si_signo, siginfo.si_errno,
-			siginfo.si_addr, siginfo.si_code, ret);
 		return true;
 	}
 	return false;

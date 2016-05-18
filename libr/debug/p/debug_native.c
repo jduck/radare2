@@ -356,8 +356,9 @@ static RDebugReasonType r_debug_native_wait (RDebug *dbg, int pid) {
 			eprintf ("child received signal %d\n", WTERMSIG(status));
 			reason = R_DEBUG_REASON_SIGNAL;
 		} else if (WIFSTOPPED (status)) {
+#ifdef DEBUG_WAIT_STATUS_TYPE
 			eprintf ("child stopped with signal %d\n", WSTOPSIG (status));
-
+#endif
 			/* this one might be good enough... */
 			dbg->reason.signum = WSTOPSIG (status);
 
