@@ -83,6 +83,30 @@ int linux_handle_signals (RDebug *dbg) {
 	return false;
 }
 
+static int linux_wait_for_stop(int pid)
+{
+	int ret, status;
+
+	for (;;) {
+		ret = waitpid(pid, &status, __WALL);
+		if (ret == -1) {
+			r_sys_perror ("waitpid for stop");
+			return false;
+		}
+
+		if (ret != pid ) {
+			eprintf ("wtf? got event for pid %d instead of %d?!\n", ret, pid);
+		}
+
+		if (WIFSTOPPED(status))
+			break;
+
+		eprintf ("wtf?! got some other event besides stop?!\n");
+		return false;
+	}
+	return true;
+}
+
 #ifdef PT_GETEVENTMSG
 /*
  * Handle PTRACE_EVENT_*
@@ -119,8 +143,10 @@ RDebugReasonType linux_ptrace_event (RDebug *dbg, int pid, int status) {
 				r_sys_perror ("ptrace GETEVENTMSG");
 				return R_DEBUG_REASON_ERROR;
 			}
-
-			eprintf ("PTRACE_EVENT_FORK new_pid=%d\n", data);
+			eprintf ("PTRACE_EVENT_FORK new_pid=%d.. waiting for it to stop...\n", data);
+			if (!linux_wait_for_stop (data))
+				return R_DEBUG_REASON_ERROR;
+			eprintf ("OKAY, it stopped.\n");
 			dbg->forked_pid = data;
 			// TODO: more handling here?
 			/* we have a new process that we are already tracing */
@@ -133,7 +159,7 @@ RDebugReasonType linux_ptrace_event (RDebug *dbg, int pid, int status) {
 				r_sys_perror ("ptrace GETEVENTMSG");
 				return R_DEBUG_REASON_ERROR;
 			}
-			eprintf ("PTRACE_EVENT_CLONE new_pid=%d\n", data);
+			eprintf ("PTRACE_EVENT_CLONE new_tid=%d\n", data);
 			// TODO: more handling here?
 			return R_DEBUG_REASON_NEW_TID;
 		}

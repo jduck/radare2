@@ -368,7 +368,7 @@ static RDebugReasonType r_debug_native_wait (RDebug *dbg, int pid) {
 			 */
 			if (!r_debug_handle_signals (dbg))
 				return R_DEBUG_REASON_ERROR;
-			reason = R_DEBUG_REASON_SIGNAL;
+			reason = dbg->reason.type;
 		} else if (WIFCONTINUED (status)) {
 			eprintf ("child continued...\n");
 			reason = R_DEBUG_REASON_NONE;
