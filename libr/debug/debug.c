@@ -159,6 +159,7 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 	/* if we are on a software stepping breakpoint, we hide what is going on... */
 	if (b->swstep) {
 		show_recoil_state (dbg, __func__, "HIDING SW BP");
+		dbg->reason.bp_addr = 0;
 		return true;
 	}
 
