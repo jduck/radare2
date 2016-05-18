@@ -127,7 +127,7 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc) {
 
 	/* if we are recoiling, tell r_debug_step that we ignored a breakpoint
 	 * event */
-	if (dbg->recoil_mode != R_DBG_RECOIL_NONE) {
+	if (!dbg->swstep && dbg->recoil_mode != R_DBG_RECOIL_NONE) {
 		show_recoil_state (dbg, __func__, "ignoring bphit in recoil");
 		dbg->reason.bp_addr = 0;
 		return true;
@@ -229,6 +229,7 @@ static int r_debug_recoil(RDebug *dbg, RDebugRecoilMode rc_mode) {
 		show_recoil_state (dbg, __func__, "recursion avoidance");
 		return true;
 	}
+#if 0
 	else if (dbg->swstep && dbg->reason.type == R_DEBUG_REASON_STEP) {
 		/* if stepping with swstep on, recoiling is just a matter of not
 		 * re-setting the breakpoint for the instruction we are stopped on.
@@ -241,6 +242,7 @@ static int r_debug_recoil(RDebug *dbg, RDebugRecoilMode rc_mode) {
 		breakpoint_state(true);
 		return true;
 	}
+#endif
 
 	/* we have entered recoil! */
 	dbg->recoil_mode = rc_mode;
