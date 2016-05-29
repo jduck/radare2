@@ -697,7 +697,7 @@ RList *w32_thread_list (int pid, RList *list) {
 				print_lasterr((char *)__FUNCTION__, "OpenThread");
                                 goto err_load_th;
 			}
-			r_list_append (list, r_debug_pid_new ("???", te32.th32ThreadID, 's', 0));
+			r_list_append (list, r_debug_process_new ("???", te32.th32ThreadID, 's', 0));
                 }
         } while (Thread32Next (th, &te32));
 err_load_th:
@@ -706,12 +706,12 @@ err_load_th:
 	return list;
 }
 
-static RDebugPid *build_debug_pid(PROCESSENTRY32 *pe) {
+static RDebugProcess *build_debug_pid(PROCESSENTRY32 *pe) {
 	HANDLE process = w32_open_process (0x1000, //PROCESS_QUERY_LIMITED_INFORMATION,
 		FALSE, pe->th32ProcessID);
 
 	if (process == INVALID_HANDLE_VALUE || w32_queryfullprocessimagename == NULL) {
-		return r_debug_pid_new (pe->szExeFile, pe->th32ProcessID, 's', 0);
+		return r_debug_process_new (pe->szExeFile, pe->th32ProcessID, 's', 0);
 	}
 
 	char image_name[MAX_PATH+1];
@@ -721,18 +721,18 @@ static RDebugPid *build_debug_pid(PROCESSENTRY32 *pe) {
 	if (w32_queryfullprocessimagename (process, 0,
 		image_name, (PDWORD)&length)) {
 		CloseHandle(process);
-		return r_debug_pid_new (image_name, pe->th32ProcessID, 's', 0);
+		return r_debug_process_new (image_name, pe->th32ProcessID, 's', 0);
 	}
 
 	CloseHandle(process);
-	return r_debug_pid_new (pe->szExeFile, pe->th32ProcessID, 's', 0);
+	return r_debug_process_new (pe->szExeFile, pe->th32ProcessID, 's', 0);
 }
 
-RList *w32_pids (int pid, RList *list) {
+RList *r_debug_w32_processes (int pid, RList *list) {
 	HANDLE process_snapshot;
 	PROCESSENTRY32 pe;
 	pe.dwSize = sizeof (PROCESSENTRY32);
-	int show_all_pids = pid == 0;
+	int show_all_processes = pid == 0;
 
 	process_snapshot = CreateToolhelp32Snapshot (TH32CS_SNAPPROCESS, pid);
 	if (process_snapshot == INVALID_HANDLE_VALUE) {
@@ -745,11 +745,11 @@ RList *w32_pids (int pid, RList *list) {
 		return list;
 	}
 	do {
-		if (show_all_pids ||
+		if (show_all_processes ||
 			pe.th32ProcessID == pid ||
 			pe.th32ParentProcessID == pid) {
 	
-			RDebugPid *debug_pid = build_debug_pid (&pe);
+			RDebugProcess *debug_pid = build_debug_pid (&pe);
 			if (debug_pid) {
 				r_list_append (list, debug_pid);
 			}

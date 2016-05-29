@@ -1885,7 +1885,7 @@ R_API int r_core_cmd_foreach3(RCore *core, const char *cmd, char *each) {
 		// iterate over all threads
 		if (dbg && dbg->h && dbg->h->threads) {
 			int origpid = dbg->pid;
-			RDebugPid *p;
+			RDebugProcess *p;
 			list = dbg->h->threads (dbg, dbg->pid);
 			if (list == NULL)
 				return false;
@@ -2006,10 +2006,10 @@ R_API int r_core_cmd_foreach(RCore *core, const char *cmd, char *each) {
 		break;
 	case 't':
 		{
-			RDebugPid *p;
+			RDebugProcess *p;
 			int pid = core->dbg->pid;
-			if (core->dbg->h && core->dbg->h->pids) {
-				RList *list = core->dbg->h->pids (R_MAX (0, pid));
+			if (core->dbg->h && core->dbg->h->processes) {
+				RList *list = core->dbg->h->processes (R_MAX (0, pid));
 				r_list_foreach (list, iter, p) {
 					r_cons_printf ("# PID %d\n", p->pid);
 					r_debug_select (core->dbg, p->pid, p->pid);

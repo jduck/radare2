@@ -382,7 +382,7 @@ RDebugInfo *xnu_info (RDebug *dbg, const char *arg) {
 }
 
 /*
-static void xnu_free_threads_ports (RDebugPid *p) {
+static void xnu_free_threads_ports (RDebugProcess *p) {
 	kern_return_t kr;
 	if (!p) return;
 	free (p->path);
@@ -409,7 +409,7 @@ RList *xnu_thread_list (RDebug *dbg, int pid, RList *list) {
 	xnu_thread_t *thread;
 	R_REG_T state;
 	xnu_update_thread_list (dbg);
-	list->free = (RListFree)&r_debug_pid_free;
+	list->free = (RListFree)&r_debug_process_free;
 	r_list_foreach (dbg->threads, iter, thread) {
 		if (!xnu_thread_get_gpr (dbg, thread)) {
 			eprintf ("Failed to get gpr registers xnu_thread_list\n");
@@ -417,7 +417,7 @@ RList *xnu_thread_list (RDebug *dbg, int pid, RList *list) {
 		}
 		thread->state_size = sizeof (thread->gpr);
 		memcpy (&state, &thread->gpr, sizeof (R_REG_T));
-		r_list_append (list, r_debug_pid_new (thread->name,
+		r_list_append (list, r_debug_process_new (thread->name,
 			thread->port, 's', CPU_PC));
 	}
 	return list;
@@ -839,7 +839,7 @@ cleanup:
 	return true;
 }
 
-RDebugPid *xnu_get_pid (int pid) {
+RDebugProcess *xnu_get_pid (int pid) {
 	int psnamelen, foo, nargs, mib[3];
 	size_t size, argmax = 4096;
 	char *curr_arg, *start_args, *iter_args, *end_args;
@@ -945,7 +945,7 @@ RDebugPid *xnu_get_pid (int pid) {
 		return NULL;
 	}
 #endif
-	return r_debug_pid_new (psname, pid, 's', 0); // XXX 's' ??, 0?? must set correct values
+	return r_debug_process_new (psname, pid, 's', 0); // XXX 's' ??, 0?? must set correct values
 }
 
 kern_return_t mach_vm_region_recurse (

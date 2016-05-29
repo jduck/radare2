@@ -406,25 +406,19 @@ static RDebugReasonType r_debug_native_wait (RDebug *dbg, int pid) {
 #undef MAXPID
 #define MAXPID 99999
 
-static RList *r_debug_native_tids (int pid) {
-	printf ("TODO: Threads: \n");
-	// T
-	return NULL;
-}
-
-static RList *r_debug_native_pids (int pid) {
+static RList *r_debug_native_processes (int pid) {
 	RList *list = r_list_new ();
 	if (!list) return NULL;
 #if __WINDOWS__ && !__CYGWIN__
-	return w32_pids (pid, list);
+	return r_debug_w32_processes (pid, list);
 #elif __APPLE__
 	if (pid) {
-		RDebugPid *p = xnu_get_pid (pid);
+		RDebugProcess *p = xnu_get_pid (pid);
 		if (p) r_list_append (list, p);
 	} else {
 		int i;
 		for (i = 1; i < MAXPID; i++) {
-			RDebugPid *p = xnu_get_pid (i);
+			RDebugProcess *p = xnu_get_pid (i);
 			if (p) r_list_append (list, p);
 		}
 	}
@@ -432,13 +426,13 @@ static RList *r_debug_native_pids (int pid) {
 	int i;
 	char *ptr, buf[1024];
 
-	list->free = (RListFree)&r_debug_pid_free;
+	list->free = (RListFree)&r_debug_process_free;
 	if (pid) {
 		DIR *dh;
 		struct dirent *de;
 
 		/* add the requested pid. should we do this? we don't even know if it's valid still.. */
-		r_list_append (list, r_debug_pid_new ("(current)", pid, 's', 0));
+		r_list_append (list, r_debug_process_new ("(current)", pid, 's', 0));
 
 		/* list parents */
 		dh = opendir ("/proc");
@@ -470,7 +464,7 @@ static RList *r_debug_native_pids (int pid) {
 				if (i == pid) {
 					//eprintf ("PPid: %d\n", ppid);
 					/* append it to the list with parent */
-					r_list_append (list, r_debug_pid_new (
+					r_list_append (list, r_debug_process_new (
 						"(ppid)", ppid, 's', 0));
 				}
 
@@ -484,7 +478,7 @@ static RList *r_debug_native_pids (int pid) {
 					continue;
 				}
 
-				r_list_append (list, r_debug_pid_new (buf, i, 's', 0));
+				r_list_append (list, r_debug_process_new (buf, i, 's', 0));
 			}
 		}
 		closedir (dh);
@@ -500,7 +494,7 @@ static RList *r_debug_native_pids (int pid) {
 			if (procfs_pid_slurp (i, "cmdline", buf, sizeof(buf)) == -1)
 				continue;
 
-			r_list_append (list, r_debug_pid_new (buf, i, 's', 0));
+			r_list_append (list, r_debug_process_new (buf, i, 's', 0));
 		}
 	}
 #endif
@@ -1476,8 +1470,7 @@ struct r_debug_plugin_t r_debug_plugin_native = {
 	.contsc = &r_debug_native_continue_syscall,
 	.attach = &r_debug_native_attach,
 	.detach = &r_debug_native_detach,
-	.pids = &r_debug_native_pids,
-	.tids = &r_debug_native_tids,
+	.processes = &r_debug_native_processes,
 	.threads = &r_debug_native_threads,
 	.wait = &r_debug_native_wait,
 	.kill = &r_debug_native_kill,

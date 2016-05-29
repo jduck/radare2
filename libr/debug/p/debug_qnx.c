@@ -5,8 +5,8 @@
 #include <libqnxr.h>
 
 /* HACK_FOR_PLUGIN_LINKAGE */
-R_API RDebugPid *__r_debug_pid_new(const char *path, int pid, char status, ut64 pc) {
-	RDebugPid *p = R_NEW0 (RDebugPid);
+R_API RDebugProcess *__r_debug_process_new(const char *path, int pid, char status, ut64 pc) {
+	RDebugProcess *p = R_NEW0 (RDebugProcess);
 	if (!p) return NULL;
 	p->path = strdup (path);
 	p->pid = pid;
@@ -15,7 +15,7 @@ R_API RDebugPid *__r_debug_pid_new(const char *path, int pid, char status, ut64 
 	p->pc = pc;
 	return p;
 }
-R_API void *__r_debug_pid_free(RDebugPid *pid) {
+R_API void *__r_debug_process_free(RDebugProcess *pid) {
 	free (pid->path);
 	free (pid);
 	return NULL;
@@ -32,27 +32,27 @@ static int buf_size = 0;
 
 static void pidlist_cb (void *ctx, pid_t pid, char *name) {
 	RList *list = ctx;
-	r_list_append (list, __r_debug_pid_new (name, pid, 's', 0));
+	r_list_append (list, __r_debug_process_new (name, pid, 's', 0));
 }
 
 static int r_debug_qnx_select (int pid, int tid) {
 	return qnxr_select (desc, pid, tid);
 }
 
-static RList *r_debug_qnx_tids (int pid) {
+static RList *r_debug_qnx_threads (int pid) {
 	eprintf ("%s: TODO: Threads\n", __func__);
 	return NULL;
 }
 
 
-static RList *r_debug_qnx_pids (int pid) {
+static RList *r_debug_qnx_processes (int pid) {
 	RList *list = r_list_new ();
 	if (!list) return NULL;
-	list->free = (RListFree)&__r_debug_pid_free;
+	list->free = (RListFree)&__r_debug_process_free;
 
 	/* TODO */
 	if (pid) {
-		r_list_append (list, __r_debug_pid_new ("(current)", pid, 's', 0));
+		r_list_append (list, __r_debug_process_new ("(current)", pid, 's', 0));
 	} else {
 		qnxr_pidlist (desc, list, &pidlist_cb);
 	}
@@ -336,8 +336,8 @@ struct r_debug_plugin_t r_debug_plugin_qnx = {
 	.cont = r_debug_qnx_continue,
 	.attach = &r_debug_qnx_attach,
 	.detach = &r_debug_qnx_detach,
-	.pids = &r_debug_qnx_pids,
-	.tids = &r_debug_qnx_tids,
+	.processes = &r_debug_qnx_processes,
+	.threads = &r_debug_qnx_threads,
 	.select = &r_debug_qnx_select,
 	.stop = &r_debug_qnx_stop,
 	.canstep = 1,

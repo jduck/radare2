@@ -163,7 +163,7 @@ static int r_debug_wind_init(RDebug *dbg) {
 	return true;
 }
 
-static RList *r_debug_wind_pids (int pid) {
+static RList *r_debug_wind_processes (int pid) {
 	RList *ret, *pids;
 	RListIter *it;
 	WindProc *p;
@@ -171,12 +171,12 @@ static RList *r_debug_wind_pids (int pid) {
 	ret = r_list_newf (free);
 	if (!ret) return NULL;
 
-	pids = wind_list_process(wctx);
+	pids = wind_list_processes(wctx);
 	if (!pids)
 		return ret;
 
 	r_list_foreach(pids, it, p) {
-		RDebugPid *newpid = R_NEW0 (RDebugPid);
+		RDebugProcess *newpid = R_NEW0 (RDebugProcess);
 		if (!newpid) {
 			r_list_free (ret);
 			return NULL;
@@ -213,7 +213,7 @@ struct r_debug_plugin_t r_debug_plugin_wind = {
 	.license = "LGPL3",
 	.arch = "x86",
 	.bits = R_SYS_BITS_32 | R_SYS_BITS_64,
-	.pids = r_debug_wind_pids,
+	.processes = r_debug_wind_processes,
 	.select = r_debug_wind_select,
 	.step = r_debug_wind_step,
 	.init = r_debug_wind_init,

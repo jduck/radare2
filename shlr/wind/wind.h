@@ -33,7 +33,7 @@ typedef struct WindProc {
 ut64 wind_get_target_base (WindCtx *ctx);
 ut32 wind_get_target (WindCtx *ctx);
 bool wind_set_target (WindCtx *ctx, ut32 pid);
-RList *wind_list_process (WindCtx *ctx);
+RList *wind_list_processes (WindCtx *ctx);
 int wind_get_cpus (WindCtx *ctx);
 bool wind_set_cpu (WindCtx *ctx, int cpu);
 int wind_get_cpu (WindCtx *ctx);

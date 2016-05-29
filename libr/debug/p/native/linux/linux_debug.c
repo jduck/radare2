@@ -241,7 +241,7 @@ RList *linux_thread_list (int pid, RList *list) {
 		r_list_free (list);
 		return NULL;
 	}
-	r_list_append (list, r_debug_pid_new ("(current)", pid, 's', 0));
+	r_list_append (list, r_debug_process_new ("(current)", pid, 's', 0));
 
 	/* if this process has a task directory, use that */
 	snprintf (buf, sizeof(buf), "/proc/%d/task", pid);
@@ -258,7 +258,7 @@ RList *linux_thread_list (int pid, RList *list) {
 			}
 
 			// TODO: get status, pc, etc..
-			r_list_append (list, r_debug_pid_new (buf, tid, 's', 0));
+			r_list_append (list, r_debug_process_new (buf, tid, 's', 0));
 		}
 		closedir (dh);
 	} else {
@@ -285,7 +285,7 @@ RList *linux_thread_list (int pid, RList *list) {
 					snprintf (buf, sizeof(buf), "thread_%d", thid++);
 				}
 
-				r_list_append (list, r_debug_pid_new (buf, i, 's', 0));
+				r_list_append (list, r_debug_process_new (buf, i, 's', 0));
 			}
 		}
 	}

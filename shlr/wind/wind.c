@@ -146,7 +146,7 @@ bool wind_set_target (WindCtx *ctx, uint32_t pid) {
 	WindProc *p;
 	RListIter *it;
 	if (pid) {
-		RList *l = wind_list_process (ctx);
+		RList *l = wind_list_processes (ctx);
 		r_list_foreach (l, it, p) {
 			if (p->uniqueid == pid) {
 				ctx->target = p;
@@ -320,7 +320,7 @@ wind_walk_vadtree (WindCtx *ctx, ut64 address, ut64 parent) {
 }
 
 RList*
-wind_list_process (WindCtx *ctx) {
+wind_list_processes (WindCtx *ctx) {
 	RList *ret;
 	ut64 ptr, base;
 

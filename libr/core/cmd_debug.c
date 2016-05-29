@@ -385,7 +385,7 @@ static void cmd_debug_pid(RCore *core, const char *input) {
 	switch (input[1]) {
 	case 0:
 		eprintf ("Selected: %d %d\n", core->dbg->pid, core->dbg->tid);
-		r_debug_pid_list (core->dbg, core->dbg->pid, 0);
+		r_debug_process_list (core->dbg, core->dbg->pid, 0);
 		break;
 	case '-': // "dp-"
 		if (input[2]== ' ') {
@@ -467,10 +467,10 @@ static void cmd_debug_pid(RCore *core, const char *input) {
 			(int) r_num_math (core->num, input+2), core->dbg->tid);
 		break;
 	case '*': // "dp*"
-		r_debug_pid_list (core->dbg, 0, 0);
+		r_debug_process_list (core->dbg, 0, 0);
 		break;
 	case 'j': // "dpj"
-		r_debug_pid_list (core->dbg, core->dbg->pid, 'j');
+		r_debug_process_list (core->dbg, core->dbg->pid, 'j');
 		break;
 	case 'e': // "dpe"
 		{
@@ -483,7 +483,7 @@ static void cmd_debug_pid(RCore *core, const char *input) {
 		}
 		break;
 	case ' ':
-		r_debug_pid_list (core->dbg,
+		r_debug_process_list (core->dbg,
 			(int) R_MAX (0, (int)r_num_math (core->num, input+2)), 0);
 		break;
 	case '?':

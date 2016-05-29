@@ -993,7 +993,7 @@ void write_note_hdr (note_type_t type, ut8 **note_data) {
 static int *get_unique_thread_id (RDebug *dbg, int n_threads) {
 	RListIter *it;
 	RList *list;
-	RDebugPid *th;
+	RDebugProcess *th;
 	int *thread_id = NULL;
 	int i = 0;
 	bool found = false;

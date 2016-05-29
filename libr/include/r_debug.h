@@ -55,7 +55,7 @@ typedef enum {
 	R_DBG_PROC_ZOMBIE = 'z',
 	R_DBG_PROC_DEAD = 'd',
 	R_DBG_PROC_RAISED = 'R' // has produced a signal, breakpoint, etc..
-} RDebugPidState;
+} RDebugProcessState;
 
 
 // signal handling must support application and debugger level options
@@ -336,9 +336,8 @@ typedef struct r_debug_plugin_t {
 	int (*attach)(RDebug *dbg, int pid);
 	int (*detach)(RDebug *dbg, int pid);
 	int (*select)(int pid, int tid);
-	RList *(*threads)(RDebug *dbg, int pid);
-	RList *(*pids)(int pid);
-	RList *(*tids)(int pid);
+	RList *(*threads)(RDebug *dbg, int pid); /* list threads for hte process 'pid' */
+	RList *(*processes)(int pid); /* list processes, as related to pid */
 	RFList (*backtrace)(int count);
 
 	/* flow */
@@ -374,15 +373,15 @@ typedef struct r_debug_plugin_t {
 
 
 /*
- * TODO: rename to r_debug_process_t ? maybe a thread too ?
+ * structures to capture information about a process/thread
  */
-typedef struct r_debug_pid_t {
+typedef struct r_debug_process_t {
 	int pid;
 	char status; /* stopped, running, zombie, sleeping ,... */
 	int runnable; /* when using 'run', 'continue', .. this proc will be runnable */
 	char *path;
 	ut64 pc;
-} RDebugPid;
+} RDebugProcess;
 
 
 /*
@@ -427,14 +426,14 @@ R_API int r_debug_continue_kill(RDebug *dbg, int signal);
 
 /* process/thread handling */
 R_API int r_debug_select(RDebug *dbg, int pid, int tid);
-//R_API int r_debug_pid_add(RDebug *dbg);
-//R_API int r_debug_pid_add_thread(RDebug *dbg);
-//R_API int r_debug_pid_del(RDebug *dbg);
-//R_API int r_debug_pid_del_thread(RDebug *dbg);
-R_API int r_debug_pid_list(RDebug *dbg, int pid, char fmt);
-R_API RDebugPid *r_debug_pid_new(const char *path, int pid, char status, ut64 pc);
-R_API RDebugPid *r_debug_pid_free(RDebugPid *pid);
-R_API RList *r_debug_pids(RDebug *dbg, int pid);
+//R_API int r_debug_process_add(RDebug *dbg);
+//R_API int r_debug_process_add_thread(RDebug *dbg);
+//R_API int r_debug_process_del(RDebug *dbg);
+//R_API int r_debug_process_del_thread(RDebug *dbg);
+R_API int r_debug_process_list(RDebug *dbg, int pid, char fmt);
+R_API RDebugProcess *r_debug_process_new(const char *path, int pid, char status, ut64 pc);
+R_API RDebugProcess *r_debug_process_free(RDebugProcess *pid);
+R_API RList *r_debug_processs(RDebug *dbg, int pid);
 R_API int r_debug_thread_list(RDebug *dbg, int pid);
 R_API int r_debug_is_dead(RDebug *dbg);
 
