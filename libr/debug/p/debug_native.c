@@ -1110,6 +1110,12 @@ static int r_debug_native_drx (RDebug *dbg, int n, ut64 addr, int sz, int rwx, i
 	return false;
 }
 
+/*
+ * set or unset breakpoints...
+ *
+ * we only handle the case for hardware breakpoints here. otherwise,
+ * we let the caller handle the work.
+ */
 static int r_debug_native_bp (RBreakpointItem *bp, int set, void *user) {
 	if (!bp) return false;
 #if __i386__ || __x86_64__

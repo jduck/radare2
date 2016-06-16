@@ -1688,10 +1688,14 @@ static void r_core_cmd_bp(RCore *core, const char *input) {
 
 	switch (input[1]) {
 	case '.':
+		/* undocumented breakpoint add command "db.<addr>" */
 		if (input[2]) {
 			ut64 addr = r_num_tail (core->num, core->offset, input +2);
+			// XXX(jjd): is this address validity check still needed?
 			if (validAddress (core, addr)) {
 				bpi = r_debug_bp_add (core->dbg, addr, hwbp, NULL, 0);
+				if (!bpi)
+					eprintf ("Unable to add breakpoint (%s)\n", input + 2);
 			} else {
 				eprintf ("Invalid address\n");
 			}
@@ -1930,8 +1934,10 @@ static void r_core_cmd_bp(RCore *core, const char *input) {
 		bpi = r_bp_get_at (core->dbg->bp, addr);
 		if (bpi) {
 			//bp->enabled = !bp->enabled;
+			// XXX(jjd): this ^^ is what I would think toggling means...
 			r_bp_del (core->dbg->bp, addr);
 		} else {
+			// XXX(jjd): does t his need an address validity check??
 			bpi = r_debug_bp_add (core->dbg, addr, hwbp, NULL, 0);
 			if (!bpi) eprintf ("Cannot set breakpoint (%s)\n", input + 2);
 		}
