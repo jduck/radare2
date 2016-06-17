@@ -1,3 +1,11 @@
+make register names case insensitive (#5156)
+
+create a prompt for the debugger specifically used only when a process stops
+otherwise, the normal prompt should be used...
+use this for dbg.status and cfg.debug etc
+
+do some testing on ARM/Android!
+
 fix signal handling?
  - should we pass or not? maybe pass everything except SIGTRAP?
  - is there a command for continuing without passing the signal?
